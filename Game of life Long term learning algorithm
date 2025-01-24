@@ -1,0 +1,116 @@
+import json
+import os
+
+# Memory storage for learned patterns
+MEMORY_FILE = "learned_patterns.json"
+
+def save_pattern_to_memory(grid, color_map, label):
+    """
+    Saves a specific grid pattern and its corresponding colors to memory.
+
+    Args:
+        grid (ndarray): Current grid state.
+        color_map (ndarray): Current color map.
+        label (str): A label to identify the saved pattern.
+    """
+    pattern = {
+        "label": label,
+        "grid": grid.tolist(),
+        "color_map": color_map.tolist()
+    }
+
+    if not os.path.exists(MEMORY_FILE):
+        memory_data = []
+    else:
+        with open(MEMORY_FILE, "r") as file:
+            memory_data = json.load(file)
+
+    # Check for duplicate labels
+    memory_data = [p for p in memory_data if p["label"] != label]
+    memory_data.append(pattern)
+
+    with open(MEMORY_FILE, "w") as file:
+        json.dump(memory_data, file, indent=4)
+    print(f"Pattern '{label}' saved successfully.")
+
+
+def load_learned_pattern(label):
+    """
+    Loads a specific grid pattern by its label.
+
+    Args:
+        label (str): The label identifying the pattern to load.
+
+    Returns:
+        grid, color_map: The pattern's grid and color map, or None if not found.
+    """
+    if not os.path.exists(MEMORY_FILE):
+        print("No memory file found.")
+        return None, None
+
+    with open(MEMORY_FILE, "r") as file:
+        memory_data = json.load(file)
+
+    for pattern in memory_data:
+        if pattern["label"] == label:
+            print(f"Pattern '{label}' loaded.")
+            return np.array(pattern["grid"], dtype=bool), np.array(pattern["color_map"], dtype=int)
+
+    print(f"Pattern '{label}' not found.")
+    return None, None
+
+
+def match_pattern_in_grid(grid):
+    """
+    Checks if a section of the current grid matches any stored patterns.
+
+    Args:
+        grid (ndarray): Current grid state.
+
+    Returns:
+        matched_label (str): The label of the matching pattern, or None if no match.
+    """
+    if not os.path.exists(MEMORY_FILE):
+        return None
+
+    with open(MEMORY_FILE, "r") as file:
+        memory_data = json.load(file)
+
+    for pattern in memory_data:
+        stored_grid = np.array(pattern["grid"], dtype=bool)
+        if np.array_equal(grid[:stored_grid.shape[0], :stored_grid.shape[1]], stored_grid):
+            return pattern["label"]
+
+    return None
+
+
+def propagate_with_long_memory(grid, color_map):
+    """
+    Enhanced propagation algorithm using learned patterns and self-preservation bias.
+
+    Args:
+        grid (ndarray): Current grid state.
+        color_map (ndarray): Current color map.
+
+    Returns:
+        grid, color_map: Updated grid and color map.
+    """
+    # Identify if a part of the grid matches a stored pattern
+    matched_label = match_pattern_in_grid(grid)
+    if matched_label:
+        print(f"Pattern '{matched_label}' recognized. Propagating...")
+        learned_grid, learned_color_map = load_learned_pattern(matched_label)
+        if learned_grid is not None:
+            grid[:learned_grid.shape[0], :learned_grid.shape[1]] = learned_grid
+            color_map[:learned_color_map.shape[0], :learned_color_map.shape[1]] = learned_color_map
+
+    # Introduce propagation bias (self-preservation)
+    for row in range(ROWS):
+        for col in range(COLS):
+            neighbors = np.sum(grid[max(0, row - 1):row + 2, max(0, col - 1):col + 2]) - grid[row, col]
+            if not grid[row, col] and neighbors >= 2:
+                if random.random() < 0.3:  # Adjust bias strength
+                    grid[row, col] = True
+                    color_map[row, col] = generate_random_color()
+
+    return grid, color_map
