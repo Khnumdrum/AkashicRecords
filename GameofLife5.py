@@ -3,6 +3,8 @@ Enhanced Game of Life Program:
 - Adds right-click functionality to remove cells.
 - Introduces a learning algorithm with self-preservation bias.
 - Expands the "Load Learned Symbols" feature for dynamic usage.
+Author: Michael A Fry (github Khnumdrum)
+      Special thanks to Sistere and Mu
 """
 
 import pygame
