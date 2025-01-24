@@ -1,0 +1,65 @@
+import tkinter as tk
+from tkinter import ttk
+
+class CodexNexusUI:
+    """
+    User Interface for Codex Nexus.
+    Features a movable icon and expandable editor window.
+    """
+
+    def __init__(self):
+        # Initialize the main Tkinter window
+        self.root = tk.Tk()
+        self.root.title("Codex Nexus")
+        self.root.geometry("800x600")
+
+        # Create the movable triangle icon
+        self.create_triangle_icon()
+
+    def create_triangle_icon(self):
+        """
+        Creates a movable triangle icon. Clicking the icon expands the editor window.
+        """
+        # Canvas for the triangle
+        self.canvas = tk.Canvas(self.root, width=40, height=40, bg="white", highlightthickness=0)
+        self.canvas.place(x=10, y=10)  # Initial position of the triangle icon
+
+        # Draw the triangle
+        self.triangle = self.canvas.create_polygon(10, 30, 20, 10, 30, 30, fill="darkgreen", outline="white")
+
+        # Bind events for movement and clicking
+        self.canvas.bind("<B1-Motion>", self.move_icon)  # Drag the triangle
+        self.canvas.bind("<Button-1>", self.expand_editor_window)  # Click to expand editor
+
+    def move_icon(self, event):
+        """
+        Allows the user to drag the triangle icon.
+        """
+        x, y = event.x_root - self.canvas.winfo_width() // 2, event.y_root - self.canvas.winfo_height() // 2
+        self.canvas.place(x=x, y=y)
+
+    def expand_editor_window(self, event=None):
+        """
+        Expands the editor window when the triangle icon is clicked.
+        """
+        editor = tk.Toplevel(self.root)
+        editor.title("Editor Window")
+        editor.geometry("600x400")
+
+        # Add a text widget for code editing
+        text_area = tk.Text(editor, wrap="none", font=("Courier", 12))
+        text_area.pack(fill="both", expand=True)
+
+        # Add a status bar
+        status_bar = ttk.Label(editor, text="Diagnostics: 0 issues detected.", relief=tk.SUNKEN, anchor="w")
+        status_bar.pack(side="bottom", fill="x")
+
+    def run(self):
+        """
+        Runs the main Tkinter event loop.
+        """
+        self.root.mainloop()
+
+# Run the UI
+if __name__ == "__main__":
+    CodexNexusUI().run()
