@@ -47,6 +47,7 @@ key_function = KeyFunction()
 
 import json
 import os
+
 # Memory storage for learned patterns
 MEMORY_FILE = "learned_patterns.json"
 def save_pattern_to_memory(grid, color_map, label):
@@ -290,6 +291,8 @@ def main():
                     key_function.toggle_key(key)
                 if key == "L":  # Load learned symbols
                     grid, color_map = learn_patterns(grid, color_map)
+                if key == "S":  # Load learned symbols
+                    grid, color_map = save_pattern_to_memory(grid, color_map,"save_memory")
                 if event.key == pygame.K_r:  # Random grid
                     key_function.key = "R"
                     grid = np.random.choice([False, True], size=(ROWS, COLS), p=[0.8, 0.2])
