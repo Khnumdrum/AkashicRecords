@@ -1,17 +1,50 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 import ast
+import os
+
+
+class CodexNexusDiagnostics:
+    """
+    Backend diagnostics engine for Codex Nexus.
+    """
+
+    @staticmethod
+    def analyze_code(code):
+        """
+        Analyzes the given code for errors and returns diagnostics.
+        :param code: str, the code to analyze
+        :return: dict, diagnostics categorized by severity
+        """
+        diagnostics = {"Critical": [], "Moderate": [], "Low": []}
+
+        try:
+            # Parse the code to check for syntax errors
+            ast.parse(code)
+        except SyntaxError as e:
+            diagnostics["Critical"].append(f"Syntax Error: {e.msg} at line {e.lineno}")
+
+        # Example: Adding static checks (you can expand this)
+        lines = code.split("\n")
+        for i, line in enumerate(lines, 1):
+            if len(line.strip()) == 0:
+                diagnostics["Moderate"].append(f"Line {i}: Empty line detected")
+            if len(line) > 80:
+                diagnostics["Low"].append(f"Line {i}: Line exceeds 80 characters")
+
+        return diagnostics
 
 
 class CodexNexusUI:
     """
-    User Interface for Codex Nexus with diagnostics functionality.
+    User Interface for Codex Nexus with integrated diagnostics.
     """
 
     def __init__(self):
         self.root = tk.Tk()
         self.root.withdraw()  # Hide the root window
-        self.is_dragging = False  # Track dragging state
+        self.diagnostics_engine = CodexNexusDiagnostics()
+        self.is_dragging = False
 
         # Create the floating triangle
         self.create_floating_triangle()
@@ -21,9 +54,9 @@ class CodexNexusUI:
         Creates a floating triangle icon with click and drag functionality.
         """
         self.triangle_window = tk.Toplevel(self.root)
-        self.triangle_window.overrideredirect(1)  # Remove window borders
-        self.triangle_window.geometry("40x40+10+10")  # Initial position
-        self.triangle_window.attributes("-topmost", True)  # Always on top
+        self.triangle_window.overrideredirect(1)
+        self.triangle_window.geometry("40x40+10+10")
+        self.triangle_window.attributes("-topmost", True)
 
         # Canvas for the triangle icon
         self.canvas = tk.Canvas(self.triangle_window, width=40, height=40, bg="white", highlightthickness=0)
@@ -61,51 +94,60 @@ class CodexNexusUI:
 
     def expand_editor_window(self):
         """
-        Expands the editor window with context menu options.
+        Expands the editor window with diagnostics integration.
         """
         editor = tk.Toplevel(self.root)
         editor.title("Editor Window")
         editor.geometry("800x600")
 
-        # Add context menu
-        menu = tk.Menu(editor, tearoff=0)
-        menu.add_command(label="Enable Diagnostics", command=self.open_code_scanner)
-        menu.add_command(label="Settings", command=self.open_settings)
+        # Create the text editor
+        text_area = tk.Text(editor, wrap="none", font=("Courier", 12))
+        text_area.pack(fill="both", expand=True)
 
-        # Bind right-click to open context menu
-        editor.bind("<Button-3>", lambda event: menu.post(event.x_root, event.y_root))
+        # Add buttons for diagnostics
+        btn_frame = tk.Frame(editor)
+        btn_frame.pack(side="top", fill="x", pady=5)
 
-    def open_code_scanner(self):
+        load_btn = ttk.Button(btn_frame, text="Load File", command=lambda: self.load_code(text_area))
+        load_btn.pack(side="left", padx=5)
+
+        diag_btn = ttk.Button(btn_frame, text="Run Diagnostics", command=lambda: self.run_diagnostics(text_area))
+        diag_btn.pack(side="left", padx=5)
+
+    def load_code(self, text_area):
         """
-        Opens a transparent window for scanning code and running diagnostics.
+        Loads a code file into the editor.
         """
-        scanner = tk.Toplevel(self.root)
-        scanner.title("Code Scanner")
-        scanner.geometry("600x400+100+100")
-        scanner.attributes("-alpha", 0.9)  # Slightly transparent
-        scanner.configure(bg="black")
-        scanner.attributes("-topmost", True)
+        file_path = filedialog.askopenfilename(filetypes=[("Python Files", "*.py"), ("All Files", "*.*")])
+        if file_path:
+            with open(file_path, "r") as file:
+                text_area.delete(1.0, tk.END)
+                text_area.insert(tk.END, file.read())
 
-        # Scanned code display
-        scanned_code_display = tk.Text(scanner, wrap="none", font=("Courier", 12), bg="white", fg="black")
-        scanned_code_display.pack(fill="both", expand=True)
-
-        # Populate placeholder code for testing
-        sample_code = """
-def test_function(a, b):
-    if a > b
-        return a
-    else:
-        print("Success!")
-"""
-        scanned_code_display.insert("1.0", sample_code)
-
-        # Diagnostics button
-        btn_run_diagnostics = ttk.Button(scanner, text="Run Diagnostics", command=lambda: self.run_diagnostics(scanned_code_display))
-        btn_run_diagnostics.pack(side="bottom", pady=5)
-
-    def run_diagnostics(self, text_widget):
+    def run_diagnostics(self, text_area):
         """
-        Runs diagnostics on the code within the text widget.
+        Runs diagnostics on the code in the text editor.
         """
-        code = text_widget.get("1
+        code = text_area.get(1.0, tk.END).strip()
+        diagnostics = self.diagnostics_engine.analyze_code(code)
+
+        # Show diagnostics results
+        result_window = tk.Toplevel(self.root)
+        result_window.title("Diagnostics Results")
+        result_window.geometry("400x300")
+
+        result_text = tk.Text(result_window, wrap="word", font=("Arial", 12), state="normal")
+        result_text.pack(fill="both", expand=True)
+
+        for severity, messages in diagnostics.items():
+            result_text.insert(tk.END, f"--- {severity.upper()} ---\n", "header")
+            for message in messages:
+                result_text.insert(tk.END, f"{message}\n", "message")
+
+        # Formatting
+        result_text.tag_configure("header", foreground="red", font=("Arial", 14, "bold"))
+        result_text.tag_configure("message", font=("Courier", 12))
+
+
+if __name__ == "__main__":
+    CodexNexusUI().run()
