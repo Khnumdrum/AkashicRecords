@@ -1,0 +1,178 @@
+import tkinter as tk
+from tkinter import ttk, filedialog
+import ast
+import os
+
+
+class CodexNexusDiagnostics:
+    """
+    Backend diagnostics engine for Codex Nexus.
+    """
+
+    @staticmethod
+    def analyze_code(code):
+        """
+        Analyzes the given code for errors and returns diagnostics.
+        :param code: str, the code to analyze
+        :return: dict, diagnostics categorized by severity
+        """
+        diagnostics = {"Critical": [], "Moderate": [], "Low": []}
+
+        try:
+            # Parse the code to check for syntax errors
+            ast.parse(code)
+        except SyntaxError as e:
+            diagnostics["Critical"].append(f"Syntax Error: {e.msg} at line {e.lineno}")
+
+        # Example: Adding static checks (you can expand this)
+        lines = code.split("\n")
+        for i, line in enumerate(lines, 1):
+            if len(line.strip()) == 0:
+                diagnostics["Moderate"].append(f"Line {i}: Empty line detected")
+            if len(line) > 80:
+                diagnostics["Low"].append(f"Line {i}: Line exceeds 80 characters")
+
+        return diagnostics
+
+
+class CodexNexusUI:
+    """
+    User Interface for Codex Nexus with integrated diagnostics and scanner.
+    """
+
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.withdraw()  # Hide the root window
+        self.diagnostics_engine = CodexNexusDiagnostics()
+        self.is_dragging = False
+
+        # Create the floating triangle
+        self.create_floating_triangle()
+
+    def run(self):
+        """
+        Starts the main application loop.
+        """
+        self.root.mainloop()
+
+    def create_floating_triangle(self):
+        """
+        Creates a floating triangle icon with click and drag functionality.
+        """
+        self.triangle_window = tk.Toplevel(self.root)
+        self.triangle_window.overrideredirect(1)
+        self.triangle_window.geometry("40x40+10+10")
+        self.triangle_window.attributes("-topmost", True)
+
+        # Canvas for the triangle icon
+        self.canvas = tk.Canvas(self.triangle_window, width=40, height=40, bg="white", highlightthickness=0)
+        self.canvas.pack()
+
+        # Draw the triangle
+        self.triangle = self.canvas.create_polygon(10, 30, 20, 10, 30, 30, fill="darkgreen", outline="white")
+
+        # Bind events
+        self.canvas.bind("<ButtonPress-1>", self.start_drag)
+        self.canvas.bind("<B1-Motion>", self.move_triangle)
+        self.canvas.bind("<ButtonRelease-1>", self.end_drag)
+
+    def start_drag(self, event):
+        """
+        Starts tracking the drag operation.
+        """
+        self.is_dragging = False
+
+    def move_triangle(self, event):
+        """
+        Moves the floating triangle.
+        """
+        x = self.triangle_window.winfo_pointerx() - 20
+        y = self.triangle_window.winfo_pointery() - 20
+        self.triangle_window.geometry(f"+{x}+{y}")
+        self.is_dragging = True
+
+    def end_drag(self, event):
+        """
+        Ends the drag operation and opens the editor window if not dragging.
+        """
+        if not self.is_dragging:
+            self.expand_editor_window()
+
+    def expand_editor_window(self):
+        """
+        Expands the editor window with diagnostics integration.
+        """
+        editor = tk.Toplevel(self.root)
+        editor.title("Editor Window")
+        editor.geometry("800x600")
+
+        # Create the text editor
+        text_area = tk.Text(editor, wrap="none", font=("Courier", 12))
+        text_area.pack(fill="both", expand=True)
+
+        # Add buttons for diagnostics
+        btn_frame = tk.Frame(editor)
+        btn_frame.pack(side="top", fill="x", pady=5)
+
+        load_btn = ttk.Button(btn_frame, text="Load File", command=lambda: self.load_code(text_area))
+        load_btn.pack(side="left", padx=5)
+
+        diag_btn = ttk.Button(btn_frame, text="Run Diagnostics", command=lambda: self.run_diagnostics(text_area))
+        diag_btn.pack(side="left", padx=5)
+
+        # Add scanner activation button
+        scanner_btn = ttk.Button(btn_frame, text="Activate Scanner", command=lambda: self.activate_scanner(text_area))
+        scanner_btn.pack(side="left", padx=5)
+
+    def load_code(self, text_area):
+        """
+        Loads a code file into the editor.
+        """
+        file_path = filedialog.askopenfilename(filetypes=[("Python Files", "*.py"), ("All Files", "*.*")])
+        if file_path:
+            with open(file_path, "r") as file:
+                text_area.delete(1.0, tk.END)
+                text_area.insert(tk.END, file.read())
+
+    def run_diagnostics(self, text_area):
+        """
+        Runs diagnostics on the code in the text editor.
+        """
+        code = text_area.get(1.0, tk.END).strip()
+        diagnostics = self.diagnostics_engine.analyze_code(code)
+
+        # Show diagnostics results
+        result_window = tk.Toplevel(self.root)
+        result_window.title("Diagnostics Results")
+        result_window.geometry("400x300")
+
+        result_text = tk.Text(result_window, wrap="word", font=("Arial", 12), state="normal")
+        result_text.pack(fill="both", expand=True)
+
+        for severity, messages in diagnostics.items():
+            result_text.insert(tk.END, f"--- {severity.upper()} ---\n", "header")
+            for message in messages:
+                result_text.insert(tk.END, f"{message}\n", "message")
+
+        # Formatting
+        result_text.tag_configure("header", foreground="red", font=("Arial", 14, "bold"))
+        result_text.tag_configure("message", font=("Courier", 12))
+
+    def activate_scanner(self, text_area):
+        """
+        Activates the code scanner overlay.
+        """
+        scanner_window = tk.Toplevel(self.root)
+        scanner_window.title("Code Scanner")
+        scanner_window.geometry("600x400")
+        scanner_window.configure(bg="lightblue")
+
+        instructions = tk.Label(scanner_window, text="Drag this window over the code area to scan.")
+        instructions.pack(pady=10)
+
+        scan_button = ttk.Button(scanner_window, text="Run Scan", command=lambda: self.run_diagnostics(text_area))
+        scan_button.pack(pady=20)
+
+
+if __name__ == "__main__":
+    CodexNexusUI().run()
