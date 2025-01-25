@@ -1,0 +1,97 @@
+import tkinter as tk
+from tkinter import ttk
+
+class CodexNexusUI:
+    """
+    User Interface for Codex Nexus.
+    Features a floating triangle entity and an expandable editor window.
+    """
+
+    def __init__(self):
+        # Root window (hidden)
+        self.root = tk.Tk()
+        self.root.withdraw()  # Hide main window
+
+        # Create the floating triangle
+        self.create_floating_triangle()
+
+    def create_floating_triangle(self):
+        """
+        Creates a floating triangle that orients itself and opens the editor window.
+        """
+        self.triangle_window = tk.Toplevel(self.root)
+        self.triangle_window.overrideredirect(1)  # Remove window borders
+        self.triangle_window.geometry("40x40+10+10")  # Initial position
+        self.triangle_window.attributes("-topmost", True)  # Keep on top
+
+        # Canvas for the triangle icon
+        self.canvas = tk.Canvas(self.triangle_window, width=40, height=40, bg="white", highlightthickness=0)
+        self.canvas.pack()
+
+        # Draw the triangle
+        self.triangle = self.canvas.create_polygon(10, 30, 20, 10, 30, 30, fill="darkgreen", outline="white")
+
+        # Bind events
+        self.canvas.bind("<Button-1>", self.expand_editor_window)  # Click to expand editor
+        self.triangle_window.bind("<B1-Motion>", self.move_triangle)  # Drag to move
+
+    def move_triangle(self, event):
+        """
+        Allows the floating triangle to be dragged.
+        """
+        x = self.triangle_window.winfo_pointerx() - 20
+        y = self.triangle_window.winfo_pointery() - 20
+        self.triangle_window.geometry(f"+{x}+{y}")
+
+    def expand_editor_window(self, event=None):
+        """
+        Expands the editor window when the triangle icon is clicked.
+        """
+        editor = tk.Toplevel(self.root)
+        editor.title("Editor Window")
+        editor.geometry("800x600")
+
+        # Add toggle buttons for visual elements
+        toggle_frame = tk.Frame(editor)
+        toggle_frame.pack(side="top", fill="x", pady=5)
+
+        btn_text = ttk.Button(toggle_frame, text="Text View", command=lambda: self.show_text_view(editor))
+        btn_text.pack(side="left", padx=5)
+
+        btn_diagram = ttk.Button(toggle_frame, text="Diagram View", command=lambda: self.show_diagram_view(editor))
+        btn_diagram.pack(side="left", padx=5)
+
+        # Default view
+        self.show_text_view(editor)
+
+    def show_text_view(self, parent):
+        """
+        Displays the text-based editor view.
+        """
+        for widget in parent.winfo_children():
+            if isinstance(widget, tk.Text) or isinstance(widget, tk.Label):
+                widget.destroy()  # Clear previous view
+
+        text_area = tk.Text(parent, wrap="none", font=("Courier", 12))
+        text_area.pack(fill="both", expand=True)
+
+    def show_diagram_view(self, parent):
+        """
+        Displays the diagram-based view.
+        """
+        for widget in parent.winfo_children():
+            if isinstance(widget, tk.Text) or isinstance(widget, tk.Label):
+                widget.destroy()  # Clear previous view
+
+        diagram_label = tk.Label(parent, text="[Diagram Placeholder]", font=("Arial", 16), bg="white")
+        diagram_label.pack(fill="both", expand=True)
+
+    def run(self):
+        """
+        Runs the main Tkinter event loop.
+        """
+        self.root.mainloop()
+
+# Run the UI
+if __name__ == "__main__":
+    CodexNexusUI().run()
