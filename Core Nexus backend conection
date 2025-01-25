@@ -1,0 +1,111 @@
+import tkinter as tk
+from tkinter import ttk
+import ast
+
+
+class CodexNexusUI:
+    """
+    User Interface for Codex Nexus with diagnostics functionality.
+    """
+
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.withdraw()  # Hide the root window
+        self.is_dragging = False  # Track dragging state
+
+        # Create the floating triangle
+        self.create_floating_triangle()
+
+    def create_floating_triangle(self):
+        """
+        Creates a floating triangle icon with click and drag functionality.
+        """
+        self.triangle_window = tk.Toplevel(self.root)
+        self.triangle_window.overrideredirect(1)  # Remove window borders
+        self.triangle_window.geometry("40x40+10+10")  # Initial position
+        self.triangle_window.attributes("-topmost", True)  # Always on top
+
+        # Canvas for the triangle icon
+        self.canvas = tk.Canvas(self.triangle_window, width=40, height=40, bg="white", highlightthickness=0)
+        self.canvas.pack()
+
+        # Draw the triangle
+        self.triangle = self.canvas.create_polygon(10, 30, 20, 10, 30, 30, fill="darkgreen", outline="white")
+
+        # Bind events
+        self.canvas.bind("<ButtonPress-1>", self.start_drag)
+        self.canvas.bind("<B1-Motion>", self.move_triangle)
+        self.canvas.bind("<ButtonRelease-1>", self.end_drag)
+
+    def start_drag(self, event):
+        """
+        Starts tracking the drag operation.
+        """
+        self.is_dragging = False
+
+    def move_triangle(self, event):
+        """
+        Moves the floating triangle.
+        """
+        x = self.triangle_window.winfo_pointerx() - 20
+        y = self.triangle_window.winfo_pointery() - 20
+        self.triangle_window.geometry(f"+{x}+{y}")
+        self.is_dragging = True
+
+    def end_drag(self, event):
+        """
+        Ends the drag operation and checks if the editor window should open.
+        """
+        if not self.is_dragging:
+            self.expand_editor_window()
+
+    def expand_editor_window(self):
+        """
+        Expands the editor window with context menu options.
+        """
+        editor = tk.Toplevel(self.root)
+        editor.title("Editor Window")
+        editor.geometry("800x600")
+
+        # Add context menu
+        menu = tk.Menu(editor, tearoff=0)
+        menu.add_command(label="Enable Diagnostics", command=self.open_code_scanner)
+        menu.add_command(label="Settings", command=self.open_settings)
+
+        # Bind right-click to open context menu
+        editor.bind("<Button-3>", lambda event: menu.post(event.x_root, event.y_root))
+
+    def open_code_scanner(self):
+        """
+        Opens a transparent window for scanning code and running diagnostics.
+        """
+        scanner = tk.Toplevel(self.root)
+        scanner.title("Code Scanner")
+        scanner.geometry("600x400+100+100")
+        scanner.attributes("-alpha", 0.9)  # Slightly transparent
+        scanner.configure(bg="black")
+        scanner.attributes("-topmost", True)
+
+        # Scanned code display
+        scanned_code_display = tk.Text(scanner, wrap="none", font=("Courier", 12), bg="white", fg="black")
+        scanned_code_display.pack(fill="both", expand=True)
+
+        # Populate placeholder code for testing
+        sample_code = """
+def test_function(a, b):
+    if a > b
+        return a
+    else:
+        print("Success!")
+"""
+        scanned_code_display.insert("1.0", sample_code)
+
+        # Diagnostics button
+        btn_run_diagnostics = ttk.Button(scanner, text="Run Diagnostics", command=lambda: self.run_diagnostics(scanned_code_display))
+        btn_run_diagnostics.pack(side="bottom", pady=5)
+
+    def run_diagnostics(self, text_widget):
+        """
+        Runs diagnostics on the code within the text widget.
+        """
+        code = text_widget.get("1
