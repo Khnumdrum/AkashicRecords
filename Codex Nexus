@@ -1,8 +1,5 @@
-"""
-Codex Nexus: A Code-Integrating Assistant
-Author: Michael (Concept) | Sistere (Support)
-Language: Python
-"""
+import tkinter as tk
+from tkinter import ttk, filedialog, Menu
 
 # Main Application
 class CodexNexus:
@@ -21,15 +18,59 @@ class CodexNexus:
         Starts the Codex Nexus assistant.
         """
         print("Starting Codex Nexus...")
-        # Placeholder for UI initialization
         self.initialize_ui()
 
     def initialize_ui(self):
         """
-        Placeholder function for UI framework integration.
+        Initializes the User Interface with Tkinter.
         """
-        print("Initializing User Interface...")
-        # TODO: Add UI framework (e.g., PyQt, Tkinter)
+        # Main application window
+        self.root = tk.Tk()
+        self.root.title("Codex Nexus")
+        self.root.geometry("600x400")
+
+        # Frame for buttons
+        btn_frame = tk.Frame(self.root)
+        btn_frame.pack(pady=10)
+
+        # Buttons
+        load_btn = tk.Button(btn_frame, text="Load File", command=self.load_file)
+        load_btn.grid(row=0, column=0, padx=5)
+
+        scan_btn = tk.Button(btn_frame, text="Run Diagnostics", command=self.run_diagnostics)
+        scan_btn.grid(row=0, column=1, padx=5)
+
+        quit_btn = tk.Button(btn_frame, text="Quit", command=self.root.quit)
+        quit_btn.grid(row=0, column=2, padx=5)
+
+        # Text area for displaying results
+        self.text_area = tk.Text(self.root, wrap="word", height=15)
+        self.text_area.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Start the Tkinter event loop
+        self.root.mainloop()
+
+    def load_file(self):
+        """
+        Opens a file dialog to load a code file.
+        """
+        file_path = filedialog.askopenfilename(filetypes=[("Python Files", "*.py")])
+        if file_path:
+            with open(file_path, "r") as file:
+                content = file.read()
+                self.text_area.delete(1.0, tk.END)
+                self.text_area.insert(tk.END, content)
+                print(f"Loaded file: {file_path}")
+
+    def run_diagnostics(self):
+        """
+        Runs diagnostics on the loaded code.
+        """
+        code = self.text_area.get(1.0, tk.END)
+        self.text_area.delete(1.0, tk.END)
+        results = self.diagnostics.scan_code(code)
+        self.text_area.insert(tk.END, results)
+
 
 # Module: Diagnostics
 class Diagnostics:
@@ -37,20 +78,22 @@ class Diagnostics:
     Handles error tracking, severity categorization, and calibration data.
     """
 
-    def log_error(self, error, severity="low"):
+    def scan_code(self, code):
         """
-        Logs an error with a specified severity level.
-        :param error: Error message
-        :param severity: Severity level ('low', 'medium', 'critical')
+        Scans the code for empty lines and logs issues.
+        :param code: The code to analyze
+        :return: Diagnostic report
         """
-        print(f"[{severity.upper()}] Error logged: {error}")
-
-    def generate_report(self):
-        """
-        Generates a summary of logged errors.
-        """
-        print("Generating Diagnostics Report...")
-        # TODO: Implement detailed error logging and reporting
+        lines = code.split("\n")
+        report = []
+        for i, line in enumerate(lines, start=1):
+            if not line.strip():  # Empty line detected
+                report.append(f"Line {i}: Empty line detected.")
+        
+        if report:
+            return "\n".join(report)
+        else:
+            return "No issues found. Code looks clean!"
 
 # Module: Organizer
 class Organizer:
