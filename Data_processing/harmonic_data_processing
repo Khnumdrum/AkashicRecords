@@ -1,34 +1,51 @@
 import numpy as np
 import cupy as cp
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List
 
 app = FastAPI()
 
+# Automatically detect CuPy availability
+def get_array_module():
+    try:
+        _ = cp.array([1])  # Try creating a CuPy array
+        return cp
+    except Exception:
+        return np  # Fall back to NumPy if CuPy is unavailable
+
+xp = get_array_module()
+
+# Pydantic model for request validation
+class DataInput(BaseModel):
+    data: List[float]
+    iterations: int = 10
+
 def logarithmic_inversion(data):
-    return cp.log(data, where=data > 0)
+    return xp.log(data, where=data > 0)
 
 def exponential_decay_inversion(data):
-    return cp.exp(-data)
+    return xp.exp(-data)
 
 def thresholding_inversion(data, threshold=1):
-    return cp.where(data > threshold, 1, data)
+    return xp.where(data > threshold, 1, data)
 
 def power_law_inversion(data, exponent=0.5):
-    return cp.power(data, exponent)
+    return xp.power(data, exponent)
 
 def feedback_loop(data, iterations=10, weight=0.9):
     results = [data]
     for _ in range(iterations):
-        data = weight * data + (1 - weight) * cp.mean(data)
+        data = weight * data + (1 - weight) * xp.mean(data)
         results.append(data)
-    return cp.array(results)
+    return xp.array(results)
 
 def alternating_pattern(data, iterations=10, factor=1.1):
     results = [data]
     for _ in range(iterations):
         data = data * factor
         results.append(data)
-    return cp.array(results)
+    return xp.array(results)
 
 def process_data(data, iterations=10):
     log_inv = logarithmic_inversion(data)
@@ -42,27 +59,30 @@ def process_data(data, iterations=10):
     final_output = alternating_results[-1]
     
     return {
-        "Original Data": data.get(),
-        "Logarithmic Inversion": log_inv.get(),
-        "Exponential Decay Inversion": exp_inv.get(),
-        "Thresholding Inversion": thresh_inv.get(),
-        "Power Law Inversion": power_inv.get(),
-        "Feedback Loop": feedback_results.get(),
-        "Alternating Pattern": alternating_results.get(),
-        "Final Processed Data": final_output.get()
+        "Original Data": data.tolist(),
+        "Logarithmic Inversion": log_inv.tolist(),
+        "Exponential Decay Inversion": exp_inv.tolist(),
+        "Thresholding Inversion": thresh_inv.tolist(),
+        "Power Law Inversion": power_inv.tolist(),
+        "Feedback Loop": feedback_results.tolist(),
+        "Alternating Pattern": alternating_results.tolist(),
+        "Final Processed Data": final_output.tolist()
     }
 
 @app.post("/process")
-def process_endpoint(data: list, iterations: int = 10):
-    data_array = cp.array(data)
-    results = process_data(data_array, iterations)
-    return results
+def process_endpoint(input_data: DataInput):
+    try:
+        data_array = xp.array(input_data.data)
+        results = process_data(data_array, input_data.iterations)
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # Example test data
-data = cp.array([9, 6, 3, 6, 9])
-iterations = 10
-results = process_data(data, iterations)
+if __name__ == "__main__":
+    test_data = xp.array([9, 6, 3, 6, 9])
+    iterations = 10
+    results = process_data(test_data, iterations)
 
-# Display results
-for key, value in results.items():
-    print(f"{key}: {value}")
+    for key, value in results.items():
+        print(f"{key}: {value}")
