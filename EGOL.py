@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from game_of_life.neural_network import MemoryManager, ColorMemoryCNN, load_learned_pattern, save_pattern_to_memory
-from game_of_life.transforms import mo
+from transforms import mo
 # Constants
 CELL_SIZE = 105
 ROWS, COLS =55, 55
