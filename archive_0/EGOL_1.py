@@ -10,7 +10,7 @@ import torch.optim as optim
 # Constants
 CELL_SIZE = 10
 ROWS, COLS = 50, 50
-SCREEN_WIDTH, SCREEN_HEIGHT = COLS * CELL_SIZE, ROWS * CELL_SIZE
+SCREEN_WIDTH, SCREEN_HEIGHT = 1920,1080 #= COLS * CELL_SIZE, ROWS * CELL_SIZE
 NUM_FIXED_ENTITIES = 3  # Number of fixed entities in the grid
 LEGEND_MINIMIZED = False  # Track if the legend is minimized
 

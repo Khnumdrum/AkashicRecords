@@ -78,7 +78,7 @@ def main():
 
     # Update grid logic and other UI elements
     if not paused and not learning_mode:
-        grid, color_map = propagate_with_long_memory(grid, color_map)
+        grid, color_map = (grid, color_map)
 
     # Render updated screen
     draw_grid(screen, grid, color_map)
