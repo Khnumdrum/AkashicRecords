@@ -1,9 +1,6 @@
-import numpy as np
 import cupy as cp
-from fastapi import FastAPI
 
-app = FastAPI()
-
+# GPU-accelerated versions of processing functions
 def logarithmic_inversion(data):
     return cp.log(data, where=data > 0)
 
@@ -51,12 +48,6 @@ def process_data(data, iterations=10):
         "Alternating Pattern": alternating_results.get(),
         "Final Processed Data": final_output.get()
     }
-
-@app.post("/process")
-def process_endpoint(data: list, iterations: int = 10):
-    data_array = cp.array(data)
-    results = process_data(data_array, iterations)
-    return results
 
 # Example test data
 data = cp.array([9, 6, 3, 6, 9])
