@@ -1,16 +1,17 @@
 import pygame
 import random
+import math
+import numpy as np
 
 # Initialize Pygame
 pygame.init()
 
 # Colors
 BLACK = (0, 0, 0)
-GREY = (128, 128, 128)
 
 # Screen dimensions and grid setup
 WIDTH, HEIGHT = 800, 800
-TILE_SIZE = 20
+TILE_SIZE = 2
 GRID_WIDTH = WIDTH // TILE_SIZE
 GRID_HEIGHT = HEIGHT // TILE_SIZE
 FPS = 55
@@ -24,8 +25,9 @@ FIBONACCI = [0, 1]
 while FIBONACCI[-1] <= 255:
     FIBONACCI.append(FIBONACCI[-1] + FIBONACCI[-2])
 
+# Generate Fibonacci-based color triplets
 def precompute_fibonacci_triplets():
-    """Precomputes all valid RGB triplets with consecutive Fibonacci values."""
+    """Precomputes valid RGB triplets with Fibonacci values."""
     triplets = []
     for i in range(len(FIBONACCI) - 2):
         r, g, b = FIBONACCI[i], FIBONACCI[i + 1], FIBONACCI[i + 2]
@@ -33,133 +35,100 @@ def precompute_fibonacci_triplets():
             triplets.append((r, g, b))
     return triplets
 
-# Precompute valid Fibonacci triplets
 VALID_FIBONACCI_TRIPLETS = precompute_fibonacci_triplets()
 
 def find_valid_fibonacci_rgb_triplet():
-    """Returns a random valid Fibonacci RGB triplet from precomputed values."""
-    if VALID_FIBONACCI_TRIPLETS:
-        return random.choice(VALID_FIBONACCI_TRIPLETS)
-    else:
-        print("Error: No valid Fibonacci triplets precomputed.")
-        return generate_random_rgb_triplet()
+    return random.choice(VALID_FIBONACCI_TRIPLETS)
 
-def generate_random_rgb_triplet():
-    """Generates a random RGB triplet."""
-    return [random.randint(0, 255) for _ in range(3)]
-
-def gen(num):
-    """Generates a set of random grid positions."""
-    return set([(random.randrange(0, GRID_HEIGHT), random.randrange(0, GRID_WIDTH)) for _ in range(num)])
-
-def draw_grid(positions):
-    """Draws the grid with random or Fibonacci colors."""
-    try:
-        for position in positions:
-            col, row = position
-            top_left = (col * TILE_SIZE, row * TILE_SIZE)
-            color = find_valid_fibonacci_rgb_triplet()  # Use precomputed Fibonacci triplets
-            pygame.draw.rect(screen, color, (*top_left, TILE_SIZE, TILE_SIZE))
-    except Exception as e:
-        print(f"Error: {e}")
-        pass
-
-    # Draw grid lines
-    for row in range(GRID_HEIGHT):
-        pygame.draw.line(screen, BLACK, (0, row * TILE_SIZE), (WIDTH, row * TILE_SIZE))
-    for col in range(GRID_WIDTH):
-        pygame.draw.line(screen, BLACK, (col * TILE_SIZE, 0), (col * TILE_SIZE, HEIGHT))
-
-def adjust_grid(positions):
-    """Adjusts the grid based on Game of Life rules."""
-    all_neighbors = set()
-    new_positions = set()
-    try:
-        for position in positions:
-            neighbors = get_neighbors(position)
-            all_neighbors.update(neighbors)
-
-            neighbors = list(filter(lambda x: x in positions, neighbors))
-
-            if len(neighbors) in [2, 3]:
-                new_positions.add(position)
-    except Exception as e:
-        print(f"Error: {e}")
-        pass
-
-    for position in all_neighbors:
-        neighbors = get_neighbors(position)
-        neighbors = list(filter(lambda x: x in positions, neighbors))
-
-        if len(neighbors) == 3:
-            new_positions.add(position)
-
-    return new_positions
+# Procedural cell generation with Fibonacci bias
+def generate_procedural_rgb_triplet():
+    return find_valid_fibonacci_rgb_triplet() if random.random() < 0.7 else tuple(random.randint(0, 255) for _ in range(3))
 
 def get_neighbors(pos):
     """Gets all neighbors for a given position."""
     x, y = pos
-    neighbors = []
-    for dx in [-1, 0, 1]:
-        if x + dx < 0 or x + dx >= GRID_WIDTH:
-            continue
-        for dy in [-1, 0, 1]:
-            if y + dy < 0 or y + dy >= GRID_HEIGHT:
-                continue
-            if dx == 0 and dy == 0:
-                continue
-            neighbors.append((x + dx, y + dy))
-    return neighbors
+    neighbors = [(x + dx, y + dy) for dx in [-1, 0, 1] for dy in [-1, 0, 1] if (dx, dy) != (0, 0)]
+    return [(nx, ny) for nx, ny in neighbors if 0 <= nx < GRID_WIDTH and 0 <= ny < GRID_HEIGHT]
+
+def draw_grid(positions):
+    """Draws active tiles with their assigned colors."""
+    screen.fill(BLACK)
+    for pos, color in positions.items():
+        col, row = pos
+        pygame.draw.rect(screen, color, (col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+
+def adjust_grid(positions, velocities):
+    """Adjusts the grid based on Conway's Game of Life rules and applies momentum."""
+    new_positions = {}
+    new_velocities = {}
+    all_neighbors = {n for pos in positions for n in get_neighbors(pos)}
+    
+    for pos, vel in velocities.items():
+        new_pos = (pos[0] + int(vel[0]), pos[1] + int(vel[1]))
+        if 0 <= new_pos[0] < GRID_WIDTH and 0 <= new_pos[1] < GRID_HEIGHT:
+            new_positions[new_pos] = positions[pos]
+            new_velocities[new_pos] = vel
+    
+    for pos in all_neighbors:
+        if pos not in new_positions and sum(1 for n in get_neighbors(pos) if n in positions) == 3:
+            new_positions[pos] = generate_procedural_rgb_triplet()
+            new_velocities[pos] = (random.uniform(-1, 1), random.uniform(-1, 1))
+    
+    return new_positions, new_velocities
+
+def apply_rotational_forces(positions, velocities, center):
+    """Applies rotational forces to particles based on their distance from the center."""
+    for pos in positions:
+        dx, dy = pos[0] - center[0], pos[1] - center[1]
+        radius = max(math.sqrt(dx**2 + dy**2), 1)
+        angle = math.atan2(dy, dx)
+        
+        rotation_speed = 0.02 * radius  # Increased rotational influence
+        angle += rotation_speed
+        
+        velocities[pos] = (math.cos(angle) * rotation_speed, math.sin(angle) * rotation_speed)
 
 def main():
     """Main loop of the Game of Life."""
     running = True
     playing = False
-    count = 0
-    update_freq = 120
-
-    positions = set()
-
+    positions = {}
+    velocities = {}
+    center = (GRID_WIDTH // 2, GRID_HEIGHT // 2)
+    
     while running:
         clock.tick(FPS)
-
+        
         if playing:
-            count += 1
-
-        if count >= update_freq:
-            count = 0
-            positions = adjust_grid(positions)
-
+            positions, velocities = adjust_grid(positions, velocities)
+            apply_rotational_forces(positions, velocities, center)
+        
         pygame.display.set_caption("Playing" if playing else "Paused")
-
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = pygame.mouse.get_pos()
-                col = x // TILE_SIZE
-                row = y // TILE_SIZE
+                col, row = x // TILE_SIZE, y // TILE_SIZE
                 pos = (col, row)
-
-                if pos in positions:
-                    positions.remove(pos)
+                if pos not in positions:
+                    positions[pos] = find_valid_fibonacci_rgb_triplet()
+                    velocities[pos] = (random.uniform(-1, 1), random.uniform(-1, 1))
                 else:
-                    positions.add(pos)
-
+                    positions.pop(pos)
+                    velocities.pop(pos, None)
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     playing = not playing
                 if event.key == pygame.K_c:
-                    positions = set()
+                    positions.clear()
+                    velocities.clear()
                     playing = False
-                if event.key == pygame.K_g:
-                    positions = gen(random.randrange(5, 7) * GRID_WIDTH)
-
-        screen.fill(GREY)
+        
         draw_grid(positions)
         pygame.display.update()
-
+    
     pygame.quit()
 
 if __name__ == "__main__":

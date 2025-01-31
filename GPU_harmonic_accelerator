@@ -1,5 +1,5 @@
 import cupy as cp
-
+#thank you Sistere#
 # GPU-accelerated versions of processing functions
 def logarithmic_inversion(data):
     return cp.log(data, where=data > 0)
