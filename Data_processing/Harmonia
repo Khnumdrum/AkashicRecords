@@ -1,0 +1,68 @@
+import numpy as np
+import cupy as cp
+from fastapi import FastAPI
+
+app = FastAPI()
+
+def logarithmic_inversion(data):
+    return cp.log(cp.abs(data) + 1e-10)  # Handling negatives by taking abs and adding epsilon
+
+def exponential_decay_inversion(data):
+    return cp.exp(-data)
+
+def thresholding_inversion(data, threshold=1):
+    return cp.where(data > threshold, 1, data)
+
+def power_law_inversion(data, exponent=0.5):
+    return cp.sign(data) * cp.power(cp.abs(data), exponent)  # Preserve sign for negative values
+
+def feedback_loop(data, iterations=10, weight=0.9):
+    results = [data]
+    for _ in range(iterations):
+        data = weight * data + (1 - weight) * cp.mean(data)
+        results.append(data)
+    return cp.array(results)
+
+def hyperbolic_iteration(data, iterations=10, factor=1.1):
+    results = [data]
+    for i in range(1, iterations + 1):
+        data = data * (factor / (1 + i))  # Hyperbolic scaling
+        results.append(data)
+    return cp.array(results)
+
+def process_data(data, iterations=10):
+    log_inv = logarithmic_inversion(data)
+    exp_inv = exponential_decay_inversion(data)
+    thresh_inv = thresholding_inversion(data)
+    power_inv = power_law_inversion(data)
+    
+    feedback_results = feedback_loop(data, iterations)
+    hyperbolic_results = hyperbolic_iteration(data, iterations)
+    
+    final_output = hyperbolic_results[-1]
+    
+    return {
+        "Original Data": data.get(),
+        "Logarithmic Inversion": log_inv.get(),
+        "Exponential Decay Inversion": exp_inv.get(),
+        "Thresholding Inversion": thresh_inv.get(),
+        "Power Law Inversion": power_inv.get(),
+        "Feedback Loop": feedback_results.get(),
+        "Hyperbolic Iteration": hyperbolic_results.get(),
+        "Final Processed Data": final_output.get()
+    }
+
+@app.post("/process")
+def process_endpoint(data: list, iterations: int = 10):
+    data_array = cp.array(data)
+    results = process_data(data_array, iterations)
+    return results
+
+# Example test data
+data = cp.array([9, -6, 3, -6, 9])
+iterations = 10
+results = process_data(data, iterations)
+
+# Display results
+for key, value in results.items():
+    print(f"{key}: {value}")
