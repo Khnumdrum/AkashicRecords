@@ -16,9 +16,11 @@ def thresholding_inversion(data, threshold=1):
 def power_law_inversion(data, exponent=0.5):
     return cp.sign(data) * cp.power(cp.abs(data), exponent)  # Preserve sign for negative values
 
-def feedback_loop(data, iterations=10, weight=0.9):
+def feedback_loop(data, iterations=10, initial_weight=0.9):
     results = [data]
+    weight = initial_weight
     for _ in range(iterations):
+        weight *= 0.95  # Gradient-based adjustment
         data = weight * data + (1 - weight) * cp.mean(data)
         results.append(data)
     return cp.array(results)
@@ -26,7 +28,8 @@ def feedback_loop(data, iterations=10, weight=0.9):
 def hyperbolic_iteration(data, iterations=10, factor=1.1):
     results = [data]
     for i in range(1, iterations + 1):
-        data = data * (factor / (1 + i))  # Hyperbolic scaling
+        dynamic_factor = factor / (1 + i**0.5)  # Hybrid hyperbolic adjustment
+        data = data * dynamic_factor
         results.append(data)
     return cp.array(results)
 
