@@ -33,7 +33,22 @@ def hyperbolic_iteration(data, iterations=10, factor=1.1):
         results.append(data)
     return cp.array(results)
 
-def process_data(data, iterations=10):
+def imperfect_sphere_inversion(data, threshold=10):
+    magnitude = cp.abs(data)
+    mask = magnitude > threshold
+    data[mask] = threshold**2 / data[mask]  # Sphere inversion for large values
+    return data
+
+def toroidal_matrix_inference(data, topology='grid'):
+    if topology == 'grid':
+        return data * cp.roll(data, shift=1)  # Basic toroidal shift
+    elif topology == 'de_bruijn':
+        return cp.sin(data) * cp.cos(cp.roll(data, shift=1))  # De Bruijn approximation
+    elif topology == 'quantum':
+        return cp.exp(1j * data) * cp.exp(-1j * cp.roll(data, shift=1))  # Quantum toroidal inference
+    return data
+
+def process_data(data, iterations=10, topology='grid'):
     log_inv = logarithmic_inversion(data)
     exp_inv = exponential_decay_inversion(data)
     thresh_inv = thresholding_inversion(data)
@@ -41,8 +56,10 @@ def process_data(data, iterations=10):
     
     feedback_results = feedback_loop(data, iterations)
     hyperbolic_results = hyperbolic_iteration(data, iterations)
+    toroidal_results = toroidal_matrix_inference(data, topology)
     
-    final_output = hyperbolic_results[-1]
+    sphere_inverted = imperfect_sphere_inversion(hyperbolic_results[-1])
+    final_output = sphere_inverted + toroidal_results
     
     return {
         "Original Data": data.get(),
@@ -52,19 +69,22 @@ def process_data(data, iterations=10):
         "Power Law Inversion": power_inv.get(),
         "Feedback Loop": feedback_results.get(),
         "Hyperbolic Iteration": hyperbolic_results.get(),
+        "Toroidal Matrix Inference": toroidal_results.get(),
+        "Imperfect Sphere Inversion": sphere_inverted.get(),
         "Final Processed Data": final_output.get()
     }
 
 @app.post("/process")
-def process_endpoint(data: list, iterations: int = 10):
+def process_endpoint(data: list, iterations: int = 10, topology: str = 'grid'):
     data_array = cp.array(data)
-    results = process_data(data_array, iterations)
+    results = process_data(data_array, iterations, topology)
     return results
 
 # Example test data
-data = cp.array([9, -6, 3, -6, 9])
+data = cp.array([9, -6, 3, -6, 9, 100, -50])
 iterations = 10
-results = process_data(data, iterations)
+topology = 'grid'
+results = process_data(data, iterations, topology)
 
 # Display results
 for key, value in results.items():
