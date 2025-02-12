@@ -1,91 +1,49 @@
 import numpy as np
-import cupy as cp
-from fastapi import FastAPI
+import psutil
+import time
 
-app = FastAPI()
+class HarmoniaCore:
+    def __init__(self, momentum_factor=0.1):
+        self.momentum_factor = momentum_factor
 
-def logarithmic_inversion(data):
-    return cp.log(cp.abs(data) + 1e-10)  # Handling negatives by taking abs and adding epsilon
+    def sum_divide_feedback_loop(self, i, j):
+        sum_i = np.sum(i)
+        sum_j = np.sum(j)
+        
+        if sum_i == sum_j:
+            return None  # Represents 0/0 indeterminate state
+        else:
+            return (sum_i - sum_j) / (sum_i - sum_j)
 
-def exponential_decay_inversion(data):
-    return cp.exp(-data)
+    def collapse_inference(self, feedback_value):
+        return 1 if feedback_value is None else feedback_value
 
-def thresholding_inversion(data, threshold=1):
-    return cp.where(data > threshold, 1, data)
+    def apply_momentum(self, collapse_value):
+        return collapse_value * (1 + self.momentum_factor)
 
-def power_law_inversion(data, exponent=0.5):
-    return cp.sign(data) * cp.power(cp.abs(data), exponent)  # Preserve sign for negative values
+    def process_tensor(self, tensor_data):
+        feedback_value = self.sum_divide_feedback_loop(tensor_data, tensor_data)
+        collapsed_value = self.collapse_inference(feedback_value)
+        return self.apply_momentum(collapsed_value)
 
-def feedback_loop(data, iterations=10, initial_weight=0.9):
-    results = [data]
-    weight = initial_weight
-    for _ in range(iterations):
-        weight *= 0.95  # Gradient-based adjustment
-        data = weight * data + (1 - weight) * cp.mean(data)
-        results.append(data)
-    return cp.array(results)
+    def benchmark(self):
+        start_time = time.time()
+        
+        tensor_data = np.random.rand(1000, 1000)
+        final_value = self.process_tensor(tensor_data)
+        
+        end_time = time.time()
+        cpu_usage = psutil.cpu_percent(interval=1)
+        memory_info = psutil.virtual_memory()
+        
+        return {
+            "elapsed_time_seconds": end_time - start_time,
+            "cpu_usage_percent": cpu_usage,
+            "memory_used_percent": memory_info.percent,
+            "final_tensor_value": final_value
+        }
 
-def hyperbolic_iteration(data, iterations=10, factor=1.1):
-    results = [data]
-    for i in range(1, iterations + 1):
-        dynamic_factor = factor / (1 + i**0.5)  # Hybrid hyperbolic adjustment
-        data = data * dynamic_factor
-        results.append(data)
-    return cp.array(results)
-
-def imperfect_sphere_inversion(data, threshold=10):
-    magnitude = cp.abs(data)
-    mask = magnitude > threshold
-    data[mask] = threshold**2 / data[mask]  # Sphere inversion for large values
-    return data
-
-def toroidal_matrix_inference(data, topology='grid'):
-    if topology == 'grid':
-        return data * cp.roll(data, shift=1)  # Basic toroidal shift
-    elif topology == 'de_bruijn':
-        return cp.sin(data) * cp.cos(cp.roll(data, shift=1))  # De Bruijn approximation
-    elif topology == 'quantum':
-        return cp.exp(1j * data) * cp.exp(-1j * cp.roll(data, shift=1))  # Quantum toroidal inference
-    return data
-
-def process_data(data, iterations=10, topology='grid'):
-    log_inv = logarithmic_inversion(data)
-    exp_inv = exponential_decay_inversion(data)
-    thresh_inv = thresholding_inversion(data)
-    power_inv = power_law_inversion(data)
-    
-    feedback_results = feedback_loop(data, iterations)
-    hyperbolic_results = hyperbolic_iteration(data, iterations)
-    toroidal_results = toroidal_matrix_inference(data, topology)
-    
-    sphere_inverted = imperfect_sphere_inversion(hyperbolic_results[-1])
-    final_output = sphere_inverted + toroidal_results
-    
-    return {
-        "Original Data": data.get(),
-        "Logarithmic Inversion": log_inv.get(),
-        "Exponential Decay Inversion": exp_inv.get(),
-        "Thresholding Inversion": thresh_inv.get(),
-        "Power Law Inversion": power_inv.get(),
-        "Feedback Loop": feedback_results.get(),
-        "Hyperbolic Iteration": hyperbolic_results.get(),
-        "Toroidal Matrix Inference": toroidal_results.get(),
-        "Imperfect Sphere Inversion": sphere_inverted.get(),
-        "Final Processed Data": final_output.get()
-    }
-
-@app.post("/process")
-def process_endpoint(data: list, iterations: int = 10, topology: str = 'grid'):
-    data_array = cp.array(data)
-    results = process_data(data_array, iterations, topology)
-    return results
-
-# Example test data
-data = cp.array([9, -6, 3, -6, 9, 100, -50])
-iterations = 10
-topology = 'grid'
-results = process_data(data, iterations, topology)
-
-# Display results
-for key, value in results.items():
-    print(f"{key}: {value}")
+if __name__ == "__main__":
+    harmonia = HarmoniaCore()
+    benchmark_results = harmonia.benchmark()
+    print("Benchmark Results:", benchmark_results)
