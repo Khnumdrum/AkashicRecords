@@ -1,2 +1,2 @@
 # AkashicRecords
-Game of life
+Athea
